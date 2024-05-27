@@ -24,6 +24,7 @@ fn main() {
                 enemy_movement,
                 update_enemy_direction,
                 confine_enemy_movement,
+                enemy_hit_player,
                 mouse_button_events,
             ),
         )
@@ -283,6 +284,38 @@ pub fn confine_enemy_movement(
         }
 
         transform.translation = translation;
+    }
+}
+
+pub fn enemy_hit_player(
+    // Entity is just a u32 so we can just copy it around. Do not need a reference.
+    mut commands: Commands,
+    mut player_query: Query<(Entity, &Transform), With<Player>>,
+    enemy_query: Query<&Transform, With<Enemy>>,
+    asset_server: Res<AssetServer>,
+) {
+    if let Ok((player_entity, player_transform)) = player_query.get_single_mut() {
+        // iterate on enemy query to look at each enemy transform
+        // just looking at transform, not a mutable query
+        for enemy_transform in enemy_query.iter() {
+            // get distance between the player transform and enemy transform
+            let distance = player_transform
+                .translation
+                .distance(enemy_transform.translation);
+            // Determine if enemy and player are touching, so need two local vars
+            let player_radius: f32 = PLAYER_SIZE / 2.0;
+            let enemy_radius: f32 = ENEMY_SIZE / 2.0;
+            // If distance less than the sum or these two, they are touching
+            if distance < player_radius + enemy_radius {
+                println!("Enemy hit player. Game Over!");
+                let sound_effect = asset_server.load("audio/explosionCrunch_000.ogg");
+                commands.spawn(AudioBundle {
+                    source: sound_effect,
+                    ..default()
+                });
+                commands.entity(player_entity).despawn();
+            }
+        }
     }
 }
 

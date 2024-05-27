@@ -9,6 +9,8 @@ pub const PLAYER_SPEED: f32 = 500.0;
 pub const NUM_ENEMIES: usize = 4;
 pub const ENEMY_SPEED: f32 = 200.0;
 pub const ENEMY_SIZE: f32 = 64.0; // Enemy sprite size
+pub const NUM_STARS: usize = 10;
+pub const STAR_SIZE: f32 = 30.0; // 30x30 pixels
 
 fn main() {
     App::new()
@@ -16,6 +18,7 @@ fn main() {
         .add_systems(Startup, spawn_camera)
         .add_systems(Startup, spawn_player)
         .add_systems(Startup, spawn_enemies)
+        .add_systems(Startup, spawn_stars)
         .add_systems(
             Update,
             (
@@ -25,6 +28,7 @@ fn main() {
                 update_enemy_direction,
                 confine_enemy_movement,
                 enemy_hit_player,
+                player_hit_star,
                 mouse_button_events,
             ),
         )
@@ -59,6 +63,9 @@ pub fn fetch_players(query: Query<&Player>) {
 pub struct Enemy {
     pub direction: Vec2,
 }
+
+#[derive(Component, Debug)]
+pub struct Star {}
 
 pub fn spawn_player(
     mut commands: Commands,
@@ -110,6 +117,30 @@ pub fn spawn_enemies(
             Enemy {
                 direction: Vec2::new(random::<f32>(), random::<f32>()).normalize(),
             },
+        ));
+    }
+}
+
+pub fn spawn_stars(
+    mut commands: Commands,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+    asset_server: Res<AssetServer>,
+) {
+    let window: &Window = window_query.get_single().unwrap();
+
+    // For loop that runs over num enemies constant to spawn them
+    for _ in 0..NUM_STARS {
+        // Random positions w/in window
+        let rand_x: f32 = random::<f32>() * window.width();
+        let rand_y: f32 = random::<f32>() * window.height();
+
+        commands.spawn((
+            SpriteBundle {
+                transform: Transform::from_xyz(rand_x, rand_y, 0.0),
+                texture: asset_server.load("sprites/star.png"),
+                ..default()
+            },
+            Star {},
         ));
     }
 }
@@ -314,6 +345,38 @@ pub fn enemy_hit_player(
                     ..default()
                 });
                 commands.entity(player_entity).despawn();
+            }
+        }
+    }
+}
+
+pub fn player_hit_star(
+    // Entity is just a u32 so we can just copy it around. Do not need a reference.
+    mut commands: Commands,
+    player_query: Query<&Transform, With<Player>>,
+    star_query: Query<(Entity, &Transform), With<Star>>,
+    asset_server: Res<AssetServer>,
+) {
+    if let Ok(player_transform) = player_query.get_single() {
+        // iterate on enemy query to look at each enemy transform
+        // just looking at transform, not a mutable query
+        for (star_entity, star_transform) in star_query.iter() {
+            // get distance between the player transform and star transform
+            let distance = player_transform
+                .translation
+                .distance(star_transform.translation);
+            // Determine if enemy and player are touching, so need two local vars
+            let player_radius: f32 = PLAYER_SIZE / 2.0;
+            let star_radius: f32 = STAR_SIZE / 2.0;
+            // If distance less than the sum or these two, they are touching
+            if distance < player_radius + star_radius {
+                println!("Player hit star. Earned points!");
+                let sound_effect = asset_server.load("audio/laserLarge_000.ogg");
+                commands.spawn(AudioBundle {
+                    source: sound_effect,
+                    ..default()
+                });
+                commands.entity(star_entity).despawn();
             }
         }
     }

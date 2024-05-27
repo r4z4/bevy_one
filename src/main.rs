@@ -1,12 +1,20 @@
-use bevy::{prelude::*, window::PrimaryWindow, input::keyboard::KeyboardInput};
+use bevy::{input::keyboard::KeyboardInput, prelude::*, window::PrimaryWindow};
 
+use bevy::input::mouse::MouseButtonInput;
 fn main() {
     App::new()
         // .add_plugins(MinimalPlugins.set(ScheduleRunnerPlugin::run_once()))
-        .add_plugins(DefaultPlugins)
         .add_systems(Startup, spawn_camera)
         .add_systems(Startup, spawn_player)
-        .add_systems(Startup, player_movement)
+        .add_systems(
+            Update,
+            (
+                player_movement,
+                print_keyboard_event_system,
+                mouse_button_events,
+            ),
+        )
+        .add_plugins(DefaultPlugins)
         .run()
 }
 
@@ -24,8 +32,14 @@ impl Plugin for PeoplePlugin {
     }
 }
 
-#[derive(Component)]
+#[derive(Component, Debug)]
 pub struct Player {}
+
+pub fn fetch_players(query: Query<&Player>) {
+    for player in &query {
+        info!("Player: {:?}", player);
+    }
+}
 
 pub fn spawn_player(
     mut commands: Commands,
@@ -61,11 +75,16 @@ pub fn print_keyboard_event_system(mut keyboard_input_events: EventReader<Keyboa
 }
 pub const PLAYER_SPEED: f32 = 500.0;
 
-pub fn player_movement(keyboard_input: Res<ButtonInput<KeyCode>>, mut player_query: Query<&mut Transform, With<Player>>, time: Res<Time>,) {
+pub fn player_movement(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut player_query: Query<&mut Transform, With<Player>>,
+    time: Res<Time>,
+) {
     if let Ok(mut transform) = player_query.get_single_mut() {
         let mut direction = Vec3::ZERO;
 
         if keyboard_input.pressed(KeyCode::ArrowLeft) || keyboard_input.pressed(KeyCode::KeyA) {
+            eprintln!("left pressed");
             direction += Vec3::new(-1.0, 0.0, 0.0);
         }
         if keyboard_input.pressed(KeyCode::ArrowRight) || keyboard_input.pressed(KeyCode::KeyD) {
@@ -85,6 +104,49 @@ pub fn player_movement(keyboard_input: Res<ButtonInput<KeyCode>>, mut player_que
         transform.translation += direction * PLAYER_SPEED * time.delta_seconds();
     }
 }
+
+fn mouse_button_events(mut mousebtn_evr: EventReader<MouseButtonInput>) {
+    use bevy::input::ButtonState;
+
+    for ev in mousebtn_evr.read() {
+        match ev.state {
+            ButtonState::Pressed => {
+                println!("Mouse button press: {:?}", ev.button);
+            }
+            ButtonState::Released => {
+                println!("Mouse button release: {:?}", ev.button);
+            }
+        }
+    }
+}
+// pub fn move_players(
+//     keyboard_input: Res<ButtonInput<KeyCode>>,
+//     mut players: Query<&mut Transform, &Sprite>,
+//     time: Res<Time>,
+// ) {
+//     for (mut transform, _) in &mut players {
+//         let mut direction = Vec3::ZERO;
+//
+//         if keyboard_input.pressed(KeyCode::ArrowLeft) || keyboard_input.pressed(KeyCode::KeyA) {
+//             direction += Vec3::new(-1.0, 0.0, 0.0);
+//         }
+//         if keyboard_input.pressed(KeyCode::ArrowRight) || keyboard_input.pressed(KeyCode::KeyD) {
+//             direction += Vec3::new(1.0, 0.0, 0.0);
+//         }
+//         if keyboard_input.pressed(KeyCode::ArrowUp) || keyboard_input.pressed(KeyCode::KeyW) {
+//             direction += Vec3::new(0.0, 1.0, 0.0);
+//         }
+//         if keyboard_input.pressed(KeyCode::ArrowDown) || keyboard_input.pressed(KeyCode::KeyS) {
+//             direction += Vec3::new(0.0, -1.0, 0.0);
+//         }
+//
+//         if direction.length() > 0.0 {
+//             direction = direction.normalize();
+//         }
+//
+//         transform.translation += direction * PLAYER_SPEED * time.delta_seconds();
+//     }
+// }
 
 pub fn hello_world() {
     println!("Hello World");

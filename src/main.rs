@@ -61,7 +61,6 @@ pub fn fetch_players(query: Query<&Player>) {
     }
 }
 
-// Enemy
 #[derive(Component, Debug)]
 pub struct Enemy {
     pub direction: Vec2,

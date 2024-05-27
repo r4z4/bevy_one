@@ -1,16 +1,27 @@
-use bevy::{input::keyboard::KeyboardInput, prelude::*, window::PrimaryWindow};
+use bevy::{
+    input::keyboard::KeyboardInput, input::mouse::MouseButtonInput, prelude::*,
+    window::PrimaryWindow,
+};
+use rand::prelude::*;
 
-use bevy::input::mouse::MouseButtonInput;
+pub const PLAYER_SIZE: f32 = 64.0; // Player sprite size
+pub const PLAYER_SPEED: f32 = 500.0;
+pub const NUM_ENEMIES: usize = 4;
+pub const ENEMY_SPEED: f32 = 200.0;
+pub const ENEMY_SIZE: f32 = 64.0; // Enemy sprite size
+
 fn main() {
     App::new()
         // .add_plugins(MinimalPlugins.set(ScheduleRunnerPlugin::run_once()))
         .add_systems(Startup, spawn_camera)
         .add_systems(Startup, spawn_player)
+        .add_systems(Startup, spawn_enemies)
         .add_systems(
             Update,
             (
                 player_movement,
-                print_keyboard_event_system,
+                confine_player_movement,
+                enemy_movement,
                 mouse_button_events,
             ),
         )
@@ -41,6 +52,11 @@ pub fn fetch_players(query: Query<&Player>) {
     }
 }
 
+#[derive(Component, Debug)]
+pub struct Enemy {
+    pub direction: Vec2,
+}
+
 pub fn spawn_player(
     mut commands: Commands,
     window_query: Query<&Window, With<PrimaryWindow>>,
@@ -48,7 +64,7 @@ pub fn spawn_player(
 ) {
     let window = window_query.get_single().unwrap();
 
-    let spawn = commands.spawn((
+    let _spawn = commands.spawn((
         SpriteBundle {
             // Centers it in the window
             transform: Transform::from_xyz(window.width() / 2.0, window.height() / 2.0, 0.0),
@@ -67,13 +83,40 @@ pub fn spawn_camera(mut commands: Commands, window_query: Query<&Window, With<Pr
         ..default()
     });
 }
+
+pub fn spawn_enemies(
+    mut commands: Commands,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+    asset_server: Res<AssetServer>,
+) {
+    // We know there will be only, and know it will exist, so can safely unwrap
+    let window: &Window = window_query.get_single().unwrap();
+
+    // For loop that runs over num enemies constant to spawn them
+    for _ in 0..NUM_ENEMIES {
+        // Random positions w/in window
+        let rand_x: f32 = random::<f32>() * window.width();
+        let rand_y: f32 = random::<f32>() * window.height();
+
+        commands.spawn((
+            SpriteBundle {
+                transform: Transform::from_xyz(rand_x, rand_y, 0.0),
+                texture: asset_server.load("sprites/ball_red_large.png"),
+                ..default()
+            },
+            Enemy {
+                direction: Vec2::new(random::<f32>(), random::<f32>()).normalize(),
+            },
+        ));
+    }
+}
+
 /// This system prints out all keyboard events as they come in
 pub fn print_keyboard_event_system(mut keyboard_input_events: EventReader<KeyboardInput>) {
     for event in keyboard_input_events.read() {
         info!("{:?}", event);
     }
 }
-pub const PLAYER_SPEED: f32 = 500.0;
 
 pub fn player_movement(
     keyboard_input: Res<ButtonInput<KeyCode>>,
@@ -119,34 +162,46 @@ fn mouse_button_events(mut mousebtn_evr: EventReader<MouseButtonInput>) {
         }
     }
 }
-// pub fn move_players(
-//     keyboard_input: Res<ButtonInput<KeyCode>>,
-//     mut players: Query<&mut Transform, &Sprite>,
-//     time: Res<Time>,
-// ) {
-//     for (mut transform, _) in &mut players {
-//         let mut direction = Vec3::ZERO;
-//
-//         if keyboard_input.pressed(KeyCode::ArrowLeft) || keyboard_input.pressed(KeyCode::KeyA) {
-//             direction += Vec3::new(-1.0, 0.0, 0.0);
-//         }
-//         if keyboard_input.pressed(KeyCode::ArrowRight) || keyboard_input.pressed(KeyCode::KeyD) {
-//             direction += Vec3::new(1.0, 0.0, 0.0);
-//         }
-//         if keyboard_input.pressed(KeyCode::ArrowUp) || keyboard_input.pressed(KeyCode::KeyW) {
-//             direction += Vec3::new(0.0, 1.0, 0.0);
-//         }
-//         if keyboard_input.pressed(KeyCode::ArrowDown) || keyboard_input.pressed(KeyCode::KeyS) {
-//             direction += Vec3::new(0.0, -1.0, 0.0);
-//         }
-//
-//         if direction.length() > 0.0 {
-//             direction = direction.normalize();
-//         }
-//
-//         transform.translation += direction * PLAYER_SPEED * time.delta_seconds();
-//     }
-// }
+
+pub fn confine_player_movement(
+    mut player_query: Query<&mut Transform, With<Player>>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+) {
+    if let Ok(mut player_transform) = player_query.get_single_mut() {
+        let window = window_query.get_single().unwrap();
+
+        let half_player_size: f32 = PLAYER_SIZE / 2.0; // 32.0
+        let x_min: f32 = 0.0 + half_player_size;
+        let x_max: f32 = window.width() - half_player_size;
+        let y_min: f32 = 0.0 + half_player_size;
+        let y_max: f32 = window.height() - half_player_size;
+
+        let mut translation: Vec3 = player_transform.translation;
+
+        // Bound the player X position
+        if translation.x < x_min {
+            translation.x = x_min;
+        } else if translation.x > x_max {
+            translation.x = x_max;
+        }
+
+        // Bound the player Y position
+        if translation.y < y_min {
+            translation.y = y_min;
+        } else if translation.y > y_max {
+            translation.y = y_max;
+        }
+
+        player_transform.translation = translation;
+    }
+}
+
+pub fn enemy_movement(mut enemy_query: Query<(&mut Transform, &Enemy)>, time: Res<Time>) {
+    for (mut transform, enemy) in enemy_query.iter_mut() {
+        let direction: Vec3 = Vec3::new(enemy.direction.x, enemy.direction.y, 0.0);
+        transform.translation += direction * ENEMY_SPEED * time.delta_seconds();
+    }
+}
 
 pub fn hello_world() {
     println!("Hello World");

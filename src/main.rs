@@ -22,6 +22,8 @@ fn main() {
                 player_movement,
                 confine_player_movement,
                 enemy_movement,
+                update_enemy_direction,
+                confine_enemy_movement,
                 mouse_button_events,
             ),
         )
@@ -167,6 +169,7 @@ pub fn confine_player_movement(
     mut player_query: Query<&mut Transform, With<Player>>,
     window_query: Query<&Window, With<PrimaryWindow>>,
 ) {
+    // Other places we are just doing unwrap() and assuming it is safe??
     if let Ok(mut player_transform) = player_query.get_single_mut() {
         let window = window_query.get_single().unwrap();
 
@@ -202,6 +205,90 @@ pub fn enemy_movement(mut enemy_query: Query<(&mut Transform, &Enemy)>, time: Re
         transform.translation += direction * ENEMY_SPEED * time.delta_seconds();
     }
 }
+
+pub fn update_enemy_direction(
+    mut enemy_query: Query<(&Transform, &mut Enemy)>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+) {
+    let window = window_query.get_single().unwrap();
+
+    let half_enemy_size: f32 = ENEMY_SIZE / 2.0; // 32.0
+    let x_min: f32 = 0.0 + half_enemy_size;
+    let x_max: f32 = window.width() - half_enemy_size;
+    let y_min: f32 = 0.0 + half_enemy_size;
+    let y_max: f32 = window.height() - half_enemy_size;
+
+    for (transform, mut enemy) in enemy_query.iter_mut() {
+        let mut direction_changed: bool = false;
+
+        // Get translation and check if it is outside the bounds we wrote
+        let translation: Vec3 = transform.translation;
+        // Flip dir by * -1
+        if translation.x <= x_min || translation.x >= x_max {
+            enemy.direction.x *= -1.0;
+            direction_changed = true;
+        }
+        if translation.y <= y_min || translation.y >= y_max {
+            enemy.direction.y *= -1.0;
+            direction_changed = true;
+        }
+
+        // Play SFX
+        if direction_changed {
+            let sound_effect_1 = asset_server.load("audio/pluck_001.ogg");
+            let sound_effect_2 = asset_server.load("audio/pluck_002.ogg");
+            // Randomly play one
+            let sound_effect = if random::<f32>() > 0.5 {
+                sound_effect_1
+            } else {
+                sound_effect_2
+            };
+            commands.spawn(AudioBundle {
+                source: sound_effect,
+                ..default()
+            });
+        }
+    }
+}
+
+pub fn confine_enemy_movement(
+    mut enemy_query: Query<&mut Transform, With<Enemy>>,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+) {
+    let window = window_query.get_single().unwrap();
+
+    let half_enemy_size: f32 = ENEMY_SIZE / 2.0; // 32.0
+    let x_min: f32 = 0.0 + half_enemy_size;
+    let x_max: f32 = window.width() - half_enemy_size;
+    let y_min: f32 = 0.0 + half_enemy_size;
+    let y_max: f32 = window.height() - half_enemy_size;
+
+    for mut transform in enemy_query.iter_mut() {
+        let mut translation: Vec3 = transform.translation;
+
+        // Bound the enemy X position
+        if translation.x < x_min {
+            translation.x = x_min;
+        } else if translation.x > x_max {
+            translation.x = x_max;
+        }
+
+        // Bound the enemy Y position
+        if translation.y < y_min {
+            translation.y = y_min;
+        } else if translation.y > y_max {
+            translation.y = y_max;
+        }
+
+        transform.translation = translation;
+    }
+}
+
+//
+//
+// Hello World e.g.
 
 pub fn hello_world() {
     println!("Hello World");

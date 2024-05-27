@@ -1,5 +1,5 @@
 use bevy::{
-    input::keyboard::KeyboardInput, input::mouse::MouseButtonInput, prelude::*,
+    app::AppExit, input::keyboard::KeyboardInput, input::mouse::MouseButtonInput, prelude::*,
     window::PrimaryWindow,
 };
 use rand::prelude::*;
@@ -12,6 +12,7 @@ pub const ENEMY_SIZE: f32 = 64.0; // Enemy sprite size
 pub const NUM_STARS: usize = 10;
 pub const STAR_SIZE: f32 = 30.0; // 30x30 pixels
 pub const STAR_SPAWN_TIME: f32 = 1.0;
+pub const ENEMY_SPAWN_TIME: f32 = 5.0;
 
 fn main() {
     App::new()
@@ -19,6 +20,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .init_resource::<Score>()
         .init_resource::<StarSpawnTimer>()
+        .init_resource::<EnemySpawnTimer>()
         .add_systems(Startup, spawn_camera)
         .add_systems(Startup, spawn_player)
         .add_systems(Startup, spawn_enemies)
@@ -35,8 +37,11 @@ fn main() {
                 player_hit_star,
                 update_score,
                 tick_star_spawn_timer,
+                tick_enemy_spawn_timer,
                 spawn_stars_over_time,
+                spawn_enemies_over_time,
                 mouse_button_events,
+                exit_game,
             ),
         )
         .run()
@@ -94,6 +99,19 @@ impl Default for StarSpawnTimer {
     fn default() -> StarSpawnTimer {
         StarSpawnTimer {
             timer: Timer::from_seconds(STAR_SPAWN_TIME, TimerMode::Repeating),
+        }
+    }
+}
+
+#[derive(Resource)]
+pub struct EnemySpawnTimer {
+    pub timer: Timer,
+}
+
+impl Default for EnemySpawnTimer {
+    fn default() -> EnemySpawnTimer {
+        EnemySpawnTimer {
+            timer: Timer::from_seconds(ENEMY_SPAWN_TIME, TimerMode::Repeating),
         }
     }
 }
@@ -421,6 +439,36 @@ pub fn update_score(score: Res<Score>) {
     }
 }
 
+pub fn tick_enemy_spawn_timer(mut enemy_spawn_timer: ResMut<EnemySpawnTimer>, time: Res<Time>) {
+    // Tick method takes in duration value so use time.delta()
+    enemy_spawn_timer.timer.tick(time.delta());
+}
+
+pub fn spawn_enemies_over_time(
+    mut commands: Commands,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+    asset_server: Res<AssetServer>,
+    enemy_spawn_timer: Res<EnemySpawnTimer>,
+) {
+    // Means timer has hit 0
+    // We set to repeating, so when it hits 0 it restarts
+    if enemy_spawn_timer.timer.finished() {
+        let window = window_query.get_single().unwrap();
+        let rand_x: f32 = random::<f32>() * window.width();
+        let rand_y: f32 = random::<f32>() * window.height();
+        commands.spawn((
+            SpriteBundle {
+                transform: Transform::from_xyz(rand_x, rand_y, 0.0),
+                texture: asset_server.load("sprites/ball_red_large.png"),
+                ..default()
+            },
+            Enemy {
+                direction: Vec2::new(random::<f32>(), random::<f32>()).normalize(),
+            },
+        ));
+    }
+}
+
 pub fn tick_star_spawn_timer(mut star_spawn_timer: ResMut<StarSpawnTimer>, time: Res<Time>) {
     // Tick method takes in duration value so use time.delta()
     star_spawn_timer.timer.tick(time.delta());
@@ -446,6 +494,17 @@ pub fn spawn_stars_over_time(
             },
             Star {},
         ));
+    }
+}
+
+pub fn exit_game(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut app_exit_event_writer: EventWriter<AppExit>,
+) {
+    // Check if esc has been pressed
+    if keyboard_input.pressed(KeyCode::Escape) {
+        // If so, send AppExit event
+        app_exit_event_writer.send(AppExit);
     }
 }
 

@@ -11,12 +11,14 @@ pub const ENEMY_SPEED: f32 = 200.0;
 pub const ENEMY_SIZE: f32 = 64.0; // Enemy sprite size
 pub const NUM_STARS: usize = 10;
 pub const STAR_SIZE: f32 = 30.0; // 30x30 pixels
+pub const STAR_SPAWN_TIME: f32 = 1.0;
 
 fn main() {
     App::new()
         // .add_plugins(MinimalPlugins.set(ScheduleRunnerPlugin::run_once()))
         .add_plugins(DefaultPlugins)
         .init_resource::<Score>()
+        .init_resource::<StarSpawnTimer>()
         .add_systems(Startup, spawn_camera)
         .add_systems(Startup, spawn_player)
         .add_systems(Startup, spawn_enemies)
@@ -32,6 +34,8 @@ fn main() {
                 enemy_hit_player,
                 player_hit_star,
                 update_score,
+                tick_star_spawn_timer,
+                spawn_stars_over_time,
                 mouse_button_events,
             ),
         )
@@ -78,6 +82,19 @@ pub struct Score {
 impl Default for Score {
     fn default() -> Score {
         Score { value: 0 }
+    }
+}
+
+#[derive(Resource)]
+pub struct StarSpawnTimer {
+    pub timer: Timer,
+}
+
+impl Default for StarSpawnTimer {
+    fn default() -> StarSpawnTimer {
+        StarSpawnTimer {
+            timer: Timer::from_seconds(STAR_SPAWN_TIME, TimerMode::Repeating),
+        }
     }
 }
 
@@ -401,6 +418,34 @@ pub fn player_hit_star(
 pub fn update_score(score: Res<Score>) {
     if score.is_changed() {
         println!("Score: {}", score.value.to_string());
+    }
+}
+
+pub fn tick_star_spawn_timer(mut star_spawn_timer: ResMut<StarSpawnTimer>, time: Res<Time>) {
+    // Tick method takes in duration value so use time.delta()
+    star_spawn_timer.timer.tick(time.delta());
+}
+
+pub fn spawn_stars_over_time(
+    mut commands: Commands,
+    window_query: Query<&Window, With<PrimaryWindow>>,
+    asset_server: Res<AssetServer>,
+    star_spawn_timer: Res<StarSpawnTimer>,
+) {
+    // Means timer has hit 0
+    // We set to repeating, so when it hits 0 it restarts
+    if star_spawn_timer.timer.finished() {
+        let window = window_query.get_single().unwrap();
+        let rand_x: f32 = random::<f32>() * window.width();
+        let rand_y: f32 = random::<f32>() * window.height();
+        commands.spawn((
+            SpriteBundle {
+                transform: Transform::from_xyz(rand_x, rand_y, 0.0),
+                texture: asset_server.load("sprites/star.png"),
+                ..default()
+            },
+            Star {},
+        ));
     }
 }
 

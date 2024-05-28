@@ -1,14 +1,9 @@
 use bevy::{prelude::*, window::PrimaryWindow};
-use enemy::EnemyPlugin;
-use player::PlayerPlugin;
-use score::ScorePlugin;
-use star::StarPlugin;
-
-pub mod enemy;
+use game::GamePlugin;
+use main_menu::MainMenuPlugin;
 pub mod events;
-pub mod player;
-pub mod score;
-pub mod star;
+pub mod game;
+pub mod main_menu;
 
 use crate::events::*;
 
@@ -16,8 +11,7 @@ fn main() {
     App::new()
         // .add_plugins(MinimalPlugins.set(ScheduleRunnerPlugin::run_once()))
         .add_plugins(DefaultPlugins)
-        .add_event::<GameOver>()
-        .add_plugins((EnemyPlugin, PlayerPlugin, ScorePlugin, StarPlugin))
+        .add_plugins((MainMenuPlugin, GamePlugin))
         .add_systems(Startup, spawn_camera)
         .add_systems(Update, (handle_game_over, exit_game))
         .run()

@@ -17,7 +17,7 @@ use bevy::{
 };
 
 use super::components::*;
-use crate::{
+use crate::game::{
     enemy::{components::Enemy, systems::ENEMY_SIZE},
     score::resources::Score,
     star::{components::Star, systems::STAR_SIZE},

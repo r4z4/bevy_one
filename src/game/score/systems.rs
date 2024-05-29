@@ -1,7 +1,7 @@
 use bevy::ecs::{
     change_detection::DetectChanges,
     event::EventReader,
-    system::{Res, ResMut},
+    system::{Commands, Res, ResMut},
 };
 
 use crate::GameOver;
@@ -27,4 +27,12 @@ pub fn high_scores_updated(high_scores: Res<HighScores>) {
     if high_scores.is_changed() {
         println!("High Scores: {:?}", high_scores);
     }
+}
+
+pub fn insert_score(mut commands: Commands) {
+    commands.insert_resource(Score::default())
+}
+
+pub fn remove_score(mut commands: Commands) {
+    commands.remove_resource::<Score>()
 }

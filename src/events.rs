@@ -26,9 +26,15 @@ pub fn exit_game(
     }
 }
 
-pub fn handle_game_over(mut game_over_event_reader: EventReader<GameOver>) {
+pub fn handle_game_over(
+    mut next_sim_state: ResMut<NextState<SimulationState>>,
+    mut next_app_state: ResMut<NextState<AppState>>,
+    mut game_over_event_reader: EventReader<GameOver>,
+) {
     for event in game_over_event_reader.read() {
         println!("Your final score is {}", event.score.to_string());
+        next_app_state.set(AppState::GameOver);
+        next_sim_state.set(SimulationState::Paused);
     }
 }
 
@@ -51,13 +57,20 @@ pub fn transition_to_main_menu_state(
     // mut commands: Commands,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     app_state: Res<State<AppState>>,
-    mut next_state: ResMut<NextState<AppState>>,
+    mut next_app_state: ResMut<NextState<AppState>>,
+    mut next_sim_state: ResMut<NextState<SimulationState>>,
 ) {
     if keyboard_input.pressed(KeyCode::KeyM) {
         match app_state.get() {
             AppState::MainMenu => (),
-            AppState::Game => next_state.set(AppState::MainMenu),
-            AppState::GameOver => next_state.set(AppState::MainMenu),
+            AppState::Game => {
+                next_sim_state.set(SimulationState::Paused);
+                next_app_state.set(AppState::MainMenu);
+            }
+            AppState::GameOver => {
+                next_sim_state.set(SimulationState::Paused);
+                next_app_state.set(AppState::MainMenu);
+            }
         }
     }
 }

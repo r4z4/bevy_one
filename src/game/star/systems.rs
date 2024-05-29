@@ -1,6 +1,7 @@
 use bevy::{
     asset::AssetServer,
     ecs::{
+        entity::Entity,
         query::With,
         system::{Commands, Query, Res, ResMut},
     },
@@ -38,6 +39,12 @@ pub fn spawn_stars(
             },
             Star {},
         ));
+    }
+}
+
+pub fn despawn_stars(mut commands: Commands, star_query: Query<Entity, With<Star>>) {
+    for star_entity in star_query.iter() {
+        commands.entity(star_entity).despawn();
     }
 }
 

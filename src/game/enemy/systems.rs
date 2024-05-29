@@ -2,6 +2,7 @@ use bevy::{
     asset::AssetServer,
     audio::AudioBundle,
     ecs::{
+        entity::Entity,
         query::With,
         system::{Commands, Query, Res, ResMut},
     },
@@ -46,6 +47,12 @@ pub fn spawn_enemies(
                 direction: Vec2::new(random::<f32>(), random::<f32>()).normalize(),
             },
         ));
+    }
+}
+
+pub fn despawn_enemies(mut commands: Commands, enemy_query: Query<Entity, With<Enemy>>) {
+    for enemy_entity in enemy_query.iter() {
+        commands.entity(enemy_entity).despawn();
     }
 }
 

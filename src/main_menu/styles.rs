@@ -2,6 +2,9 @@ use bevy::prelude::*;
 
 pub const NORMAL_BTN_COLOR: Color = Color::rgb(0.15, 0.15, 0.15);
 
+pub const HOVERED_BTN_COLOR: Color = Color::rgb(0.25, 0.25, 0.25);
+pub const PRESSED_BTN_COLOR: Color = Color::rgb(0.35, 0.75, 0.35);
+
 pub const BTN_STYLE: Style = {
     let mut style = Style::DEFAULT;
     style.justify_content = JustifyContent::Center;

@@ -22,18 +22,27 @@ impl Plugin for PlayerPlugin {
             .add_systems(OnEnter(AppState::Game), spawn_player)
             .add_systems(
                 Update,
-                (player_movement)
-                    .in_set(MovementSystemSet)
+                (
+                    player_movement.in_set(MovementSystemSet),
+                    confine_player_movement.in_set(ConfinementSystemSet),
+                )
                     .run_if(in_state(AppState::Game))
                     .run_if(in_state(SimulationState::Running)),
             )
-            .add_systems(
-                Update,
-                (confine_player_movement)
-                    .in_set(ConfinementSystemSet)
-                    .run_if(in_state(AppState::Game))
-                    .run_if(in_state(SimulationState::Running)),
-            )
+            // .add_systems(
+            //     Update,
+            //     (player_movement)
+            //         .in_set(MovementSystemSet)
+            //         .run_if(in_state(AppState::Game))
+            //         .run_if(in_state(SimulationState::Running)),
+            // )
+            // .add_systems(
+            //     Update,
+            //     (confine_player_movement)
+            //         .in_set(ConfinementSystemSet)
+            //         .run_if(in_state(AppState::Game))
+            //         .run_if(in_state(SimulationState::Running)),
+            // )
             .add_systems(
                 Update,
                 (enemy_hit_player, player_hit_star)
